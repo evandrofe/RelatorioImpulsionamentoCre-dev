@@ -147,6 +147,8 @@ module.exports = async function handler(req, res) {
       return v.toLocaleString('pt-BR');
     };
 
+    const titleCase = s => s ? String(s).toLowerCase().replace(/(?:^|\s|-)\S/g, c => c.toUpperCase()) : s;
+
     // Agrupa campanhas por data pra inserir linhas separadoras
     const dataRows = [];
     let lastDateKey = null;
@@ -171,7 +173,7 @@ module.exports = async function handler(req, res) {
       lastDateKey = curDateKey;
 
       dataRows.push([
-        r.name,
+        titleCase(r.name),
         r.format,
         r.validity || '',
         fmt(r.budget) ? fmtBRL(r.budget) : '',
