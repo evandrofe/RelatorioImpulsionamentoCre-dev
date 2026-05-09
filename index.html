@@ -1252,11 +1252,69 @@ function fmtValidity(dStart, dEnd) {
   return d1 + '/' + m1 + '/' + y1 + conector + d2 + '/' + m2 + '/' + y2;
 }
 
+function formatActionName(name, objective) {
+  if (!name) return '';
+  var parts = name.split(/\s*-\s*/);
+  // Formatos e abreviações de objetivo a remover dos segmentos
+  var FORMAT_WORDS = /^(carrossel|carrosel|panfleto|panfletos|tabloide|tabloides|tabloide|post|reels?|video|vídeo|virtual|virtuais)$/i;
+  var DATE_PATTERN = /^\d{1,2}\/\d{1,2}(\/\d{2,4})?$/;
+  var OBJ_ABBREV = {
+    'alc': 'Alcance', 'al': 'Alcance', 'alcance': 'Alcance', 'alcances': 'Alcance',
+    'eng': 'Engajamento', 'engaj': 'Engajamento', 'engajamento': 'Engajamento', 'engajamentos': 'Engajamento',
+    'whats': 'WhatsApp', 'whatsapp': 'WhatsApp', 'wpp': 'WhatsApp', 'zap': 'WhatsApp', 'wats': 'WhatsApp',
+    'traf': 'Tráfego', 'trafego': 'Tráfego',
+    'views': 'Visualização', 'visualizacao': 'Visualização', 'thruplay': 'ThruPlay',
+    'conv': 'Conversas', 'conversas': 'Conversas', 'conversa': 'Conversas',
+    'clique no link': 'Clique no Link'
+  };
+
+  var cleaned = [];
+  var foundObj = false;
+
+  for (var i = 0; i < parts.length; i++) {
+    var segment = parts[i].trim();
+    if (!segment) continue;
+
+    // Pula segmentos que são datas (03/03/26, 09/03/26)
+    if (DATE_PATTERN.test(segment)) continue;
+
+    // Pula segmentos que são nomes de formato
+    if (FORMAT_WORDS.test(segment)) continue;
+
+    // Verifica se é abreviação de objetivo — substitui pela palavra completa
+    var segLower = segment.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    if (OBJ_ABBREV[segLower]) {
+      cleaned.push(OBJ_ABBREV[segLower]);
+      foundObj = true;
+      continue;
+    }
+
+    // Segmento normal — mantém
+    cleaned.push(segment);
+  }
+
+  // Se não encontrou objetivo no nome mas temos o objetivo detectado, adiciona
+  if (!foundObj && objective && objective !== 'indefinido') {
+    var OBJ_DISPLAY = {
+      'Alcance': 'Alcance',
+      'Engajamento': 'Engajamento',
+      'EngLink': 'Engajamento + Link',
+      'Conversas': 'WhatsApp',
+      'ConvLink': 'WhatsApp + Link',
+      'WhatsEng': 'WhatsApp + Engajamento',
+      'Reels': 'Visualização'
+    };
+    cleaned.push(OBJ_DISPLAY[objective] || objective);
+  }
+
+  return cleaned.join(' - ');
+}
+
 function parseExcel(wb){var ws=wb.Sheets[wb.SheetNames[0]];var rows=XLSX.utils.sheet_to_json(ws,{header:1,raw:true,dateNF:'dd/mm/yyyy'});if(!rows.length)throw new Error('Arquivo vazio.');var headers=rows[0].map(function(h){return String(h||'').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');});
 var iCN=getIdx(headers,['nome da campanha','campaign name']);var iAN=getIdx(headers,['nome do anuncio','ad name']);var iCA=getIdx(headers,['nome do conjunto de anuncios','ad set name','conjunto de anuncios','nome do conjunto']);var iDI=getIdx(headers,['inicio','start']);var iDT=getIdx(headers,['termino','end']);var iB=getIdx(headers,['orcamento da campanha','campaign budget','orcamento','investimento']);var iS=getIdx(headers,['valor usado (brl)','valor usado','amount spent','valor gasto']);var iCPM=getIdx(headers,['cpm (custo por 1.000 impressoes)','cpm','custo por 1.000 impressoes']);var iIm=getIdx(headers,['impressoes','impressions']);var iR=getIdx(headers,['alcance','reach']);var iRes=getIdx(headers,['resultados','results','result']);var iEP=getIdx(headers,['engajamentos com o post','post engagements']);var iTC=getIdx(headers,['custo por thruplay','cost per thruplay']);var iCPR=getIdx(headers,['custo por resultado','cost per result']);var iCE=getIdx(headers,['custo por engajamento com o post','cost per post engagement','custo por interacao']);var iCC=getIdx(headers,['custo por conversa por mensagem iniciada','cost per messaging conversation started']);var iLC=getIdx(headers,['cliques no link','link clicks']);var iCPC=getIdx(headers,['cpc (custo por clique no link)','cpc (custo por clique)','custo por clique no link','cpc']);
 var data=[];for(var i=1;i<rows.length;i++){var row=rows[i];if(!row||!row.length)continue;var g=function(idx){return(idx>=0&&idx<row.length)?row[idx]:undefined;};var nameRaw=g(iCN);if(!nameRaw)continue;var name=String(nameRaw).trim();if(!name)continue;var adName=String(g(iAN)||g(iCA)||'').trim();var format=detectFormat(name,adName);var objective=detectObjective(name,format);var dateFromName=extractDateFromName(name);var dStart=parseMetaDate(g(iDI));var dEnd=parseMetaDate(g(iDT));var validity='';if(dStart)validity=fmtValidity(dStart,dEnd);else if(dateFromName)validity=fmtValidity(dateFromName,null);var sortDate=dateFromName||dStart;var spent=parseCurrency(g(iS));var budget=parseCurrency(g(iB));var impr=parseNum(g(iIm));var reach=parseNum(g(iR));var results=parseNum(g(iRes));var links=parseNum(g(iLC));var eng=parseNum(g(iEP));if(!eng&&results>0)eng=results;
 var cpm=parseCurrency(g(iCPM));if(!cpm&&impr>0&&spent>0)cpm=(spent/impr)*1000;var cpc=parseCurrency(g(iCPC));if(!cpc&&links>0&&spent>0)cpc=spent/links;var cThru=parseCurrency(g(iTC));if(!cThru){var c1=parseCurrency(g(iCPR));if(c1>0)cThru=c1;else if(results>0&&spent>0)cThru=spent/results;}var cInt=parseCurrency(g(iCE));if(!cInt){var c2=parseCurrency(g(iCPR));if(c2>0)cInt=c2;else if(eng>0&&spent>0)cInt=spent/eng;}var cConv=parseCurrency(g(iCC));if(!cConv){var c3=parseCurrency(g(iCPR));if(c3>0)cConv=c3;else if(results>0&&spent>0)cConv=spent/results;}
-data.push({name:name,format:format,objective:objective,validity:validity,sortDate:sortDate,budget:budget,spent:spent,cpm:cpm,cpc:cpc,cThru:cThru,cInt:cInt,cConv:cConv,reach:reach,impr:impr,views:results,eng:eng,conv:results,links:links});}
+data.push({name:name,displayName:formatActionName(name,objective),format:format,objective:objective,validity:validity,sortDate:sortDate,budget:budget,spent:spent,cpm:cpm,cpc:cpc,cThru:cThru,cInt:cInt,cConv:cConv,reach:reach,impr:impr,views:results,eng:eng,conv:results,links:links});}
 sortCampaignRows(data);return data;}
 
 
@@ -1596,7 +1654,7 @@ function confirmAndRender() {
 // ======================================================
 function renderReport(data){var tbody=document.getElementById('tableBody');tbody.innerHTML='';var lastDateKey='';for(var idx=0;idx<data.length;idx++){var r=data[idx];var o=r.objective;var isEngFmt=/panfleto|carrossel|virtual|tabloide|post/i.test(r.format);var curDate=extractDateFromName(r.name);var curDateKey=curDate?curDate.getTime():'none';if(idx>0&&curDateKey!==lastDateKey){tbody.innerHTML+='<tr><td colspan="17" style="background:#fff;border:none;height:16px"></td></tr>';}lastDateKey=curDateKey;
 var colReach=fmtNum(r.reach);var colEng=(o==='Engajamento'&&isEngFmt)?fmtNum(r.eng):'-';var colLinks=(o==='EngLink'||o==='ConvLink')?fmtNum(r.links):'-';var colViews=(o==='Reels')?fmtNum(r.views):'-';var colCPM=(o==='Alcance')?fmtBRL(r.cpm):'-';var colCPC=(o==='EngLink'||o==='ConvLink')?fmtBRL(r.cpc):'-';var colThru=(o==='Reels')?fmtBRL(r.cThru):'-';var colCInt=(o==='Engajamento'&&isEngFmt)?fmtBRL(r.cInt):'-';var colCConv=(o==='Conversas'||o==='WhatsEng')?fmtBRL(r.cConv):'-';var colConv=(o==='Conversas'||o==='WhatsEng')?fmtNum(r.conv):'-';
-tbody.innerHTML+='<tr><td>'+titleCase(r.name)+'</td><td>'+r.format+'</td><td>'+(r.validity||'-')+'</td><td>'+fmtBRL(r.budget)+'</td><td>'+fmtBRL(r.spent)+'</td><td>'+colReach+'</td><td>'+colEng+'</td><td>'+colLinks+'</td><td>'+colViews+'</td><td>'+colCPM+'</td><td>'+colCPC+'</td><td>'+colThru+'</td><td>'+colCInt+'</td><td>'+colCConv+'</td><td>-</td><td>-</td><td>'+colConv+'</td></tr>';}
+tbody.innerHTML+='<tr><td>'+titleCase(r.displayName||r.name)+'</td><td>'+r.format+'</td><td>'+(r.validity||'-')+'</td><td>'+fmtBRL(r.budget)+'</td><td>'+fmtBRL(r.spent)+'</td><td>'+colReach+'</td><td>'+colEng+'</td><td>'+colLinks+'</td><td>'+colViews+'</td><td>'+colCPM+'</td><td>'+colCPC+'</td><td>'+colThru+'</td><td>'+colCInt+'</td><td>'+colCConv+'</td><td>-</td><td>-</td><td>'+colConv+'</td></tr>';}
 document.getElementById('reportArea').style.display='block';document.getElementById('headerBtns').style.display='flex';var info=parseFileName(originalFileName);document.getElementById('clienteNameReport').textContent=info.cliente;saveAppState();}
 
 function resetView() {
@@ -1787,7 +1845,7 @@ ws.addRow(['AÇÕES MENSAIS']);ws.mergeCells('A1:Q1');var r1=ws.getCell('A1');r1
 var HDR=['NOME DA AÇÃO','FORMATO','VALIDADE','INVESTIMENTO','VALOR GASTO','ALCANCE','ENGAJAMENTO','CLIQUES NO LINK','VISUALIZAÇÃO (THRUPLAY)','CUSTO POR 1.000 PESSOAS','CUSTO POR CLIQUES NO LINK','CUSTO POR THRUPLAY','CUSTO POR INTERAÇÃO','CUSTO POR CONVERSA','FILTRO','CIDADE','CONVERSAS INICIADAS'];
 ws.addRow(HDR);ws.getRow(2).height=20;HDR.forEach(function(_,ci){var cell=ws.getRow(2).getCell(ci+1);cell.fill=fl(C.gray1);cell.font=fn(true,10,C.black,'Century Gothic');cell.alignment=al('center','middle',true);cell.border=bAll;});
 var lastDateKeyXl='';campaignsData.forEach(function(r){var curDate=extractDateFromName(r.name);var curDateKey=curDate?curDate.getTime():'none';if(lastDateKeyXl!==''&&curDateKey!==lastDateKeyXl){var rBlank=ws.addRow(Array(17).fill(''));rBlank.height=12;for(var ci=1;ci<=17;ci++){rBlank.getCell(ci).fill=fl('FFF0F0F0');rBlank.getCell(ci).border={top:bk,bottom:bk};}}lastDateKeyXl=curDateKey;
-var o=r.objective;var isEF=/panfleto|carrossel|virtual|tabloide|post/i.test(r.format);var vals=[titleCase(r.name),r.format,r.validity||'-',r.budget>0?r.budget:'-',r.spent>0?r.spent:'-',r.reach>0?r.reach:'-',(o==='Engajamento'&&isEF)&&r.eng>0?r.eng:'-',(o==='EngLink'||o==='ConvLink')&&r.links>0?r.links:'-',o==='Reels'&&r.views>0?r.views:'-',o==='Alcance'&&r.cpm>0?r.cpm:'-',(o==='EngLink'||o==='ConvLink')&&r.cpc>0?r.cpc:'-',o==='Reels'&&r.cThru>0?r.cThru:'-',(o==='Engajamento'&&isEF)&&r.cInt>0?r.cInt:'-',(o==='Conversas'||o==='WhatsEng')&&r.cConv>0?r.cConv:'-','-','-',(o==='Conversas'||o==='WhatsEng')&&r.conv>0?r.conv:'-'];
+var o=r.objective;var isEF=/panfleto|carrossel|virtual|tabloide|post/i.test(r.format);var vals=[titleCase(r.displayName||r.name),r.format,r.validity||'-',r.budget>0?r.budget:'-',r.spent>0?r.spent:'-',r.reach>0?r.reach:'-',(o==='Engajamento'&&isEF)&&r.eng>0?r.eng:'-',(o==='EngLink'||o==='ConvLink')&&r.links>0?r.links:'-',o==='Reels'&&r.views>0?r.views:'-',o==='Alcance'&&r.cpm>0?r.cpm:'-',(o==='EngLink'||o==='ConvLink')&&r.cpc>0?r.cpc:'-',o==='Reels'&&r.cThru>0?r.cThru:'-',(o==='Engajamento'&&isEF)&&r.cInt>0?r.cInt:'-',(o==='Conversas'||o==='WhatsEng')&&r.cConv>0?r.cConv:'-','-','-',(o==='Conversas'||o==='WhatsEng')&&r.conv>0?r.conv:'-'];
 var row=ws.addRow(vals);row.height=20;vals.forEach(function(v,ci){var cell=row.getCell(ci+1);cell.fill=fl(C.white);cell.font=fn(false,10,C.black);cell.alignment=ci===0?al('left','top',true):al('center','top');cell.border=bAll;if(typeof v==='number'){if([3,4,9,10,11,12,13].includes(ci))cell.numFmt=BRL;if([5,6,7,8,16].includes(ci))cell.numFmt=NUM;}});});
 // Empty + Legendas
 var rE=ws.addRow(Array(17).fill(''));rE.height=20;for(var ci=1;ci<=17;ci++){rE.getCell(ci).fill=fl(C.white);rE.getCell(ci).border={};}
