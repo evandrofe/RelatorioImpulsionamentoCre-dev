@@ -630,16 +630,16 @@ var OBJ_LABELS = {
   Alcance:'Alcance', Engajamento:'Engajamento', EngLink:'Engajamento + Link',
   Conversas:'Conversas (WhatsApp)', ConvLink:'WhatsApp + Link',
   WhatsEng:'Whats (Engajamento + Conversas)', Reels:'Reels/Vídeo (ThruPlay)',
-  ReelsEng:'Reels (Engajamento)', ReelsAlc:'Reels (Alcance)',
+  ReelsEng:'Reels (Engajamento)', ReelsAlc:'Reels (Alcance)', ReelsWhats:'Reels (WhatsApp)',
   indefinido:'⚠ Não detectado'
 };
 var OBJ_BADGE = {
   Alcance:'badge-alc', Engajamento:'badge-eng', EngLink:'badge-eng-link',
   Conversas:'badge-conv', ConvLink:'badge-conv-link', WhatsEng:'badge-whatseng',
-  Reels:'badge-views', ReelsEng:'badge-eng', ReelsAlc:'badge-alc',
+  Reels:'badge-views', ReelsEng:'badge-eng', ReelsAlc:'badge-alc', ReelsWhats:'badge-conv',
   indefinido:'badge-unknown'
 };
-var OBJ_OPTIONS = ['Alcance','Engajamento','EngLink','Conversas','ConvLink','WhatsEng','Reels','ReelsEng','ReelsAlc'];
+var OBJ_OPTIONS = ['Alcance','Engajamento','EngLink','Conversas','ConvLink','WhatsEng','Reels','ReelsEng','ReelsAlc','ReelsWhats'];
 var CLASSIFIER_CONFIG_STORAGE_KEY = 'relatorios_ads_classifier_config_v1';
 var DEFAULT_CLASSIFIER_CONFIG = {
   normalizationAliases: {
@@ -663,7 +663,7 @@ var DEFAULT_CLASSIFIER_CONFIG = {
     {keyword:'post',label:'Post'},
     {keyword:'video',label:'Vídeo',aliases:['vídeo']}
   ],
-  objectivePriority:{Alcance:1,Engajamento:2,EngLink:3,Conversas:4,ConvLink:5,WhatsEng:6,Reels:7,ReelsEng:8,ReelsAlc:9},
+  objectivePriority:{Alcance:1,Engajamento:2,EngLink:3,Conversas:4,ConvLink:5,WhatsEng:6,Reels:7,ReelsEng:8,ReelsAlc:9,ReelsWhats:10},
   objectiveRules:[
     {name:'Reels por formato',objective:'Reels',when:{formatIn:['Reels','Vídeo']}},
     {name:'WhatsApp + clique no link',objective:'ConvLink',when:{textRegex:'CLIQUE\\s*(NO\\s*)?LINK',anyWords:[['whats','whatsapp','wapp','wpp','zap']]}},
@@ -1380,8 +1380,8 @@ function renderReport(data) {
     var colCPC=(o==='EngLink'||o==='ConvLink')?fmtBRL(r.cpc):'-';
     var colThru=(o==='Reels')?fmtBRL(r.cThru):'-';
     var colCInt=(o==='Engajamento'&&isEngFmt)||(o==='ReelsEng')?fmtBRL(r.cInt):'-';
-    var colCConv=(o==='Conversas'||o==='WhatsEng')?fmtBRL(r.cConv):'-';
-    var colConv=(o==='Conversas'||o==='WhatsEng')?fmtNum(r.conv):'-';
+    var colCConv=(o==='Conversas'||o==='WhatsEng'||o==='ReelsWhats')?fmtBRL(r.cConv):'-';
+    var colConv=(o==='Conversas'||o==='WhatsEng'||o==='ReelsWhats')?fmtNum(r.conv):'-';
     tbody.innerHTML += '<tr><td>'+titleCase(r.displayName||r.name)+'</td><td>'+r.format+'</td><td>'+(r.validity||'-')+'</td><td>'+fmtBRL(r.budget)+'</td><td>'+fmtBRL(r.spent)+'</td><td>'+colReach+'</td><td>'+colEng+'</td><td>'+colLinks+'</td><td>'+colViews+'</td><td>'+colCPM+'</td><td>'+colCPC+'</td><td>'+colThru+'</td><td>'+colCInt+'</td><td>'+colCConv+'</td><td>-</td><td>-</td><td>'+colConv+'</td></tr>';
   }
   document.getElementById('reportArea').style.display = 'block';
@@ -1545,9 +1545,9 @@ var ReportExporter = {
         (o==='EngLink'||o==='ConvLink')&&r.cpc>0?r.cpc:'-',
         o==='Reels'&&r.cThru>0?r.cThru:'-',
         ((o==='Engajamento'&&isEF)||(o==='ReelsEng'))&&r.cInt>0?r.cInt:'-',
-        (o==='Conversas'||o==='WhatsEng')&&r.cConv>0?r.cConv:'-',
+        (o==='Conversas'||o==='WhatsEng'||o==='ReelsWhats')&&r.cConv>0?r.cConv:'-',
         '-','-',
-        (o==='Conversas'||o==='WhatsEng')&&r.conv>0?r.conv:'-'
+        (o==='Conversas'||o==='WhatsEng'||o==='ReelsWhats')&&r.conv>0?r.conv:'-'
       ];
       var row=ws.addRow(vals);row.height=20;
       vals.forEach(function(v,ci){
