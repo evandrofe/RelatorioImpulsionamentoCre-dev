@@ -1782,7 +1782,7 @@ async function exportGoogleSheets() {
     };
     var btn = document.getElementById('btnGoogleSheets');
     if (btn) { btn.disabled=true; btn.textContent='Gerando Google Sheets...'; }
-    var response = await fetch('/api/export-google-sheets',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    var response = await fetch('https://relatorio-impulsionamento-cre-dev.vercel.app/api/export-google-sheets',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
     var result = await response.json();
     if (!result.success) throw new Error(result.error || 'Falha ao gerar Google Sheets.');
     window.open(result.url,'_blank');
